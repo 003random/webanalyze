@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/rverton/webanalyze"
+	"github.com/003random/webanalyze"
 )
 
 var (
