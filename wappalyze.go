@@ -1,13 +1,13 @@
 package webanalyze
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"regexp"
-	"strings"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+    "regexp"
+    "strings"
 )
 
 // WappalyzerURL is the link to the latest apps.json file in the Wappalyzer repo
@@ -18,205 +18,206 @@ type StringArray []string
 
 // App type encapsulates all the data about an App from apps.json
 type App struct {
-	Cats     StringArray       `json:"cats"`
-	CatNames []string          `json:"category_names"`
-	Cookies  map[string]string `json:"cookies"`
-	Headers  map[string]string `json:"headers"`
-	Meta     map[string]string `json:"meta"`
-	HTML     StringArray       `json:"html"`
-	Script   StringArray       `json:"script"`
-	URL      StringArray       `json:"url"`
-	Website  string            `json:"website"`
-	Implies  StringArray       `json:"implies"`
+    Cats     StringArray       `json:"cats"`
+    CatNames []string          `json:"category_names"`
+    Cookies  map[string]string `json:"cookies"`
+    Headers  map[string]string `json:"headers"`
+    Meta     map[string]string `json:"meta"`
+    HTML     StringArray       `json:"html"`
+    Script   StringArray       `json:"script"`
+    URL      StringArray       `json:"url"`
+    Website  string            `json:"website"`
+    Implies  StringArray       `json:"implies"`
 
-	HTMLRegex   []AppRegexp `json:"-"`
-	ScriptRegex []AppRegexp `json:"-"`
-	URLRegex    []AppRegexp `json:"-"`
-	HeaderRegex []AppRegexp `json:"-"`
-	MetaRegex   []AppRegexp `json:"-"`
-	CookieRegex []AppRegexp `json:"-"`
+    HTMLRegex   []AppRegexp `json:"-"`
+    ScriptRegex []AppRegexp `json:"-"`
+    URLRegex    []AppRegexp `json:"-"`
+    HeaderRegex []AppRegexp `json:"-"`
+    MetaRegex   []AppRegexp `json:"-"`
+    CookieRegex []AppRegexp `json:"-"`
 }
 
 // Category names defined by wappalyzer
 type Category struct {
-	Name string `json:"name"`
+    Name string `json:"name"`
 }
 
 // AppsDefinition type encapsulates the json encoding of the whole apps.json file
 type AppsDefinition struct {
-	Apps map[string]App      `json:"apps"`
-	Cats map[string]Category `json:"categories"`
+    Apps map[string]App      `json:"apps"`
+    Cats map[string]Category `json:"categories"`
 }
 
 type AppRegexp struct {
-	Name    string
-	Regexp  *regexp.Regexp
-	Version string
+    Name    string
+    Regexp  *regexp.Regexp
+    Version string
 }
 
 func (app *App) FindInHeaders(headers http.Header) (matches [][]string, version string) {
-	var v string
+    var v string
 
-	for _, hre := range app.HeaderRegex {
-		if headers.Get(hre.Name) == "" {
-			continue
-		}
-		hk := http.CanonicalHeaderKey(hre.Name)
-		for _, headerValue := range headers[hk] {
-			if headerValue == "" {
-				continue
-			}
-			if m, version := findMatches(headerValue, []AppRegexp{hre}); len(m) > 0 {
-				matches = append(matches, m...)
-				v = version
-			}
-		}
-	}
-	return matches, v
+    for _, hre := range app.HeaderRegex {
+        if headers.Get(hre.Name) == "" {
+            continue
+        }
+        hk := http.CanonicalHeaderKey(hre.Name)
+        for _, headerValue := range headers[hk] {
+            if headerValue == "" {
+                continue
+            }
+            if m, version := findMatches(headerValue, []AppRegexp{hre}); len(m) > 0 {
+                matches = append(matches, m...)
+                v = version
+            }
+        }
+    }
+    return matches, v
 }
 
 // UnmarshalJSON is a custom unmarshaler for handling bogus apps.json types from wappalyzer
 func (t *StringArray) UnmarshalJSON(data []byte) error {
-	var s string
-	var sa []string
-	var na []int
+    var s string
+    var sa []string
+    var na []int
 
-	if err := json.Unmarshal(data, &s); err != nil {
-		if err := json.Unmarshal(data, &na); err == nil {
-			// not a string, so maybe []int?
-			*t = make(StringArray, len(na))
+    if err := json.Unmarshal(data, &s); err != nil {
+        if err := json.Unmarshal(data, &na); err == nil {
+            // not a string, so maybe []int?
+            *t = make(StringArray, len(na))
 
-			for i, number := range na {
-				(*t)[i] = fmt.Sprintf("%d", number)
-			}
+            for i, number := range na {
+                (*t)[i] = fmt.Sprintf("%d", number)
+            }
 
-			return nil
-		} else if err := json.Unmarshal(data, &sa); err == nil {
-			// not a string, so maybe []string?
-			*t = sa
-			return nil
-		}
-		fmt.Println(string(data))
-		return err
-	}
-	*t = StringArray{s}
-	return nil
+            return nil
+        } else if err := json.Unmarshal(data, &sa); err == nil {
+            // not a string, so maybe []string?
+            *t = sa
+            return nil
+        }
+        fmt.Println(string(data))
+        return err
+    }
+    *t = StringArray{s}
+    return nil
 }
 
 // DownloadFile pulls the latest apps.json file from the Wappalyzer github
 func DownloadFile(from, to string) error {
-	resp, err := http.Get(from)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+    resp, err := http.Get(from)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
 
-	f, err := os.Create(to)
-	if err != nil {
-		return err
-	}
+    f, err := os.Create(to)
+    if err != nil {
+        return err
+    }
 
-	_, err = io.Copy(f, resp.Body)
-	return err
+    _, err = io.Copy(f, resp.Body)
+    return err
 }
 
 // load apps from file
 func loadApps(filename string) error {
-	f, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+    f, err := os.Open(filename)
+    if err != nil {
+        return err
+    }
+    defer f.Close()
 
-	dec := json.NewDecoder(f)
-	if err = dec.Decode(&AppDefs); err != nil {
-		return err
-	}
+    dec := json.NewDecoder(f)
+    if err = dec.Decode(&AppDefs); err != nil {
+        return err
+    }
 
-	for key, value := range AppDefs.Apps {
+    for key, value := range AppDefs.Apps {
 
-		app := AppDefs.Apps[key]
+        app := AppDefs.Apps[key]
 
-		app.HTMLRegex = compileRegexes(value.HTML)
-		app.ScriptRegex = compileRegexes(value.Script)
-		app.URLRegex = compileRegexes(value.URL)
+        app.HTMLRegex = compileRegexes(value.HTML)
+        app.ScriptRegex = compileRegexes(value.Script)
+        app.URLRegex = compileRegexes(value.URL)
 
-		app.HeaderRegex = compileNamedRegexes(app.Headers)
-		app.MetaRegex = compileNamedRegexes(app.Meta)
-		app.CookieRegex = compileNamedRegexes(app.Cookies)
+        app.HeaderRegex = compileNamedRegexes(app.Headers)
+        app.MetaRegex = compileNamedRegexes(app.Meta)
+        app.CookieRegex = compileNamedRegexes(app.Cookies)
 
-		app.CatNames = make([]string, 0)
+        app.CatNames = make([]string, 0)
 
-		for _, cid := range app.Cats {
-			if category, ok := AppDefs.Cats[string(cid)]; ok && category.Name != "" {
-				app.CatNames = append(app.CatNames, category.Name)
-			}
-		}
+        for _, cid := range app.Cats {
+            if category, ok := AppDefs.Cats[string(cid)]; ok && category.Name != "" {
+                app.CatNames = append(app.CatNames, category.Name)
+            }
+        }
 
-		AppDefs.Apps[key] = app
+        AppDefs.Apps[key] = app
 
-	}
+    }
 
-	return nil
+    return nil
 }
 
 func compileNamedRegexes(from map[string]string) []AppRegexp {
 
-	var list []AppRegexp
+    var list []AppRegexp
 
-	for key, value := range from {
+    for key, value := range from {
 
-		h := AppRegexp{
-			Name: key,
-		}
+        h := AppRegexp{
+            Name: key,
+        }
 
-		if value == "" {
-			value = ".*"
-		}
+        if value == "" {
+            value = ".*"
+        }
 
-		// Filter out webapplyzer attributes from regular expression
-		splitted := strings.Split(value, "\\;")
+        // Filter out webapplyzer attributes from regular expression
+        splitted := strings.Split(value, "\\;")
 
-		r, err := regexp.Compile(splitted[0])
-		if err != nil {
-			continue
-		}
+        r, err := regexp.Compile(splitted[0])
+        if err != nil {
+            continue
+        }
 
-		if len(splitted) > 1 && strings.HasPrefix(splitted[1], "version:") {
-			h.Version = splitted[1][8:]
-		}
+        if len(splitted) > 1 && strings.HasPrefix(splitted[1], "version:") {
+            h.Version = splitted[1][8:]
+        }
 
-		h.Regexp = r
-		list = append(list, h)
-	}
+        h.Regexp = r
+        list = append(list, h)
+    }
 
-	return list
+    return list
 }
 
 func compileRegexes(s StringArray) []AppRegexp {
-	var list []AppRegexp
+    var list []AppRegexp
 
-	for _, regexString := range s {
+    for _, regexString := range s {
 
-		// Split version detection
-		splitted := strings.Split(regexString, "\\;")
+        // Split version detection
+        splitted := strings.Split(regexString, "\\;")
 
-		regex, err := regexp.Compile(splitted[0])
-		if err != nil {
-			// ignore failed compiling for now
-			// log.Printf("warning: compiling regexp for failed: %v", regexString, err)
-		} else {
-			rv := AppRegexp{
-				Regexp: regex,
-			}
+        regex, err := regexp.Compile(splitted[0])
+        if err != nil {
+            // ignore failed compiling for now
+            // log.Printf("warning: compiling regexp for failed: %v", regexString, err)
+        } else {
+            rv := AppRegexp{
+                Regexp: regex,
+            }
 
-			if len(splitted) > 1 && strings.HasPrefix(splitted[0], "version") {
-				rv.Version = splitted[1][8:]
-			}
+            if len(splitted) > 1 && strings.HasPrefix(splitted[0], "version") {
+                rv.Version = splitted[1][8:]
+            }
 
-			list = append(list, rv)
-		}
-	}
+            list = append(list, rv)
+        }
+    }
 
-	return list
+    return list
 }
+
