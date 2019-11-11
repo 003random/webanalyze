@@ -1,11 +1,9 @@
 package webanalyze
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -56,9 +54,9 @@ func (m *Match) updateVersion(version string) {
 }
 
 // Init sets up all the workders, reads in the host data and returns the results channel or an error
-func Init(workers int, hosts io.Reader, appsFile string, crawlCount int, searchSubdomain bool) (chan Result, error) {
+func Init(host string, appsFile string, body string, headers map[string][]string) (chan Result, error) {
 	var err error
-	wa, err = NewWebAnalyzer(workers, appsFile)
+	wa, err = NewWebAnalyzer(4, appsFile)
 	if err != nil {
 		return nil, err
 	}
@@ -67,22 +65,13 @@ func Init(workers int, hosts io.Reader, appsFile string, crawlCount int, searchS
 	wa.wgJobs.Add(1)
 
 	// send hosts line by line to worker channel
-	go func(hosts io.Reader, wa *WebAnalyzer) {
-		scanner := bufio.NewScanner(hosts)
-		for scanner.Scan() {
-			url := scanner.Text()
-			wa.schedule(NewOnlineJob(url, "", nil, crawlCount, searchSubdomain))
-
-			// increment wg for each to be crawled page
-			if crawlCount > 0 {
-				wa.wgJobs.Add(1)
-			}
-		}
+	go func(host string, wa *WebAnalyzer) {
+		wa.schedule(NewOfflineJob(host, body, headers))
 		wa.wgJobs.Done()
 
 		// wait for workers to finish, the close result channel to signal finish of scan
 		wa.close()
-	}(hosts, wa)
+	}(host, wa)
 	return wa.Results, nil
 }
 
